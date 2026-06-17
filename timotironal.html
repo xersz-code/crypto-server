@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simulasi timoti ronal</title>
+    <style>
+        body{
+            margin:0;
+            background:#0B0F14;
+            color:white;
+            font-family:sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* AUTHENTICATION SCREEN SYSTEM */
+        #authContainer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0B0F14;
+            z-index: 20000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .auth-card {
+            background: #161d26;
+            padding: 30px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .auth-card h2 { margin-top: 0; margin-bottom: 20px; }
+
+        .auth-card input {
+            width: 100%;
+            height: 45px;
+            background: #0B0F14;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            padding: 0 15px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        .auth-card button {
+            width: 100%; height: 45px;
+            border: none; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .primary-btn { background: #00ff88; color: #0B0F14; }
+        .secondary-btn { background: transparent; color: #888; font-size: 13px; }
+
+        /* MAIN DASHBOARD STYLES */
+        .topbar{
+            position:relative;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:20px;
+            z-index: 100;
+        }
+
+        .asset{
+            font-size:15px;
+            color:#aaa;
+        }
+
+        .price{
+            font-size:34px;
+            font-weight:700;
+        }
+
+        .green{ color:#00ff88; }
+        .red{ color:#ff4d67; }
+
+        .graph-container{
+            position:relative;
+            width:100%;
+            height:60vh;
+            display:flex;
+            align-items:flex-end;
+        }
+
+        #chart{
+            width:100%;
+            height:100%;
+            pointer-events:none;
+        }
+
+        .actions{
+            display:flex;
+            gap:15px;
+            padding:0 20px 20px;
+            position:relative;
+            top:-40px;
+            z-index:99;
+        }
+
+        .buy,.sell{
+            flex:1;
+            height:60px;
+            border:none;
+            border-radius:18px;
+            font-size:18px;
+            font-weight:bold;
+            cursor: pointer;
+        }
+
+        .buy{ background:#00ff88; }
+        .sell{ background:#ff4d67; }
+
+        #menuBtn{
+            width:45px;
+            height:45px;
+            background:none;
+            border:none;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            gap:5px;
+            cursor: pointer;
+            z-index: 10001;
+        }
+
+        #menuBtn span{
+            width:24px;
+            height:2px;
+            background:white;
+            transition:.25s;
+        }
+
+        /* Hamburger animations */
+        #menuBtn.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+        #menuBtn.open span:nth-child(2) { opacity: 0; }
+        #menuBtn.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+        #menuPanel{
+            position:absolute;
+            top:60px; right:20px;
+            background:#161d26;
+            border-radius:20px;
+            width:190px;
+            opacity:0;
+            transform:scale(.9);
+            pointer-events:none;
+            transition:.25s ease;
+            z-index: 10000;
+        }
+
+        #menuPanel.show{ opacity:1; transform:scale(1); pointer-events:auto; }
+        #menuPanel div{ padding:16px; border-bottom:1px solid rgba(255,255,255,.05); cursor: pointer; transition: background 0.2s; }
+        #menuPanel div:hover{ background: rgba(255, 255, 255, 0.05); }
+        #menuPanel div:first-child{ border-top-left-radius: 20px; border-top-right-radius: 20px; }
+        #menuPanel div:last-child{ border:none; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+
+        #menuPanel .nav-highlight { color: #00ff88; font-weight: bold; }
+        #menuPanel .nav-danger { color: #ff4d67; font-weight: bold; }
+
+        .position{ margin-top:8px; font-size:18px; font-weight:600; transition:.2s; }
+        .position.green{ color:#00ff88; }
+        .position.red{ color:#ff4d67; }
+        .position.neutral{ color:#888; }
+
+        .sell-group{ flex:1; display:flex; flex-direction:column; gap:8px; }
+        .sell-all{ height:32px; border:none; border-radius:12px; background:#ff4d67; color:white; font-size:12px; font-weight:700; cursor: pointer; }
+
+        .stats{ display:flex; gap:12px; margin-top:18px; }
+        .stat-card{ flex:1; background:#161d26; padding:14px; border-radius:18px; }
+        .label{ color:#888; font-size:13px; margin-bottom:6px; }
+
+        .buy, .sell, .sell-all{ transition: transform .1s, opacity .1s; }
+        .buy:active, .sell:active, .sell-all:active{ transform:scale(.95); opacity:.8; }
+        .buy:active{ transform:scale(.95); box-shadow:0 0 25px #00ff88; }
+        .sell:active{ transform:scale(.95); box-shadow:0 0 25px #ff4d67; }
+
+        /* FULLSCREEN OVERLAY MODULES */
+        .app-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0B0F14;
+            z-index: 999;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94);
+            box-sizing: border-box;
+            padding: 80px 20px 20px 20px;
+            overflow-y: auto;
+        }
+
+        .app-overlay.active { transform: translateY(0); }
+        .overlay-card { background: #161d26; border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+        .overlay-title { margin-top: 0; font-size: 24px; font-weight: 700; margin-bottom: 20px; }
+
+        .crypto-list, .leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+        .crypto-item, .leader-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px; background: rgba(255,255,255,0.02);
+            border-radius: 14px; border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer; transition: 0.2s;
+        }
+        .crypto-item:hover { background: rgba(255,255,255,0.06); }
+        .crypto-item.active-asset { border-color: #00ff88; background: rgba(0, 255, 136, 0.03); }
+        .leader-item.me { border-color: #00ff88; background: rgba(0, 255, 136, 0.05); }
+
+        .rank-identity, .asset-identity { display: flex; align-items: center; gap: 12px; }
+        .asset-ticker { color: #888; font-size: 13px; margin-left: 5px; }
+        .rank-num { font-weight: bold; color: #888; width: 24px; }
+        .leader-item.me .rank-num { color: #00ff88; }
+
+        .account-info-row { margin-bottom: 18px; }
+        .account-value { font-size: 16px; font-weight: 600; margin-top: 4px; }
+        .danger-zone { border: 1px solid rgba(255, 77, 103, 0.2); }
+        .logout-action-btn {
+            width: 100%; height: 50px; background: #ff4d67; color: white;
+            border: none; border-radius: 16px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .logout-action-btn:active { transform: scale(0.97); }
+        .close-overlay-btn {
+            background: rgba(255, 255, 255, 0.08); border: none; color: white;
+            padding: 10px 20px; border-radius: 14px; font-weight: 600;
+            cursor: pointer; margin-bottom: 20px; display: inline-block;
+        }
+
+        .edit-username-container { display: flex; gap: 10px; margin-top: 8px; }
+        .edit-username-input {
+            flex: 1; height: 40px; background: #0B0F14; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; color: white; padding: 0 12px; font-size: 14px;
+        }
+        .edit-username-btn {
+            height: 40px; padding: 0 16px; background: #00ff88; color: #0B0F14;
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
+            font-size: 14px; transition: opacity 0.1s;
+        }
+        .edit-username-btn:active { opacity: 0.8; }
+
+        /* 🔥 CUSTOM SYSTEM POPUP ALERT MODAL STYLES */
+        #customAlertModal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(11, 15, 20, 0.85); backdrop-filter: blur(4px);
+            z-index: 50000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+        }
+        #customAlertModal.visible { opacity: 1; pointer-events: auto; }
+        .alert-box {
+            background: #161d26; border: 2px solid #00ff88; border-radius: 20px;
+            padding: 24px; width: 85%; max-width: 340px; text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); transform: scale(0.8); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #customAlertModal.visible .alert-box { transform: scale(1); }
+        .alert-box h3 { margin-top: 0; font-size: 20px; color: #00ff88; margin-bottom: 12px; }
+        .alert-box p { font-size: 15px; color: #e0e0e0; line-height: 1.4; margin-bottom: 20px; }
+        .alert-close-btn {
+            width: 100%; height: 42px; background: #00ff88; color: #0B0F14;
+            border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer;
+        }
+        .alert-box.pump-alert { border-color: #ff9f00; }
+        .alert-box.pump-alert h3 { color: #ff9f00; }
+    </style>
+</head>
+<body>
+
+<div id="customAlertModal">
+    <div id="customAlertBox" class="alert-box">
+        <h3 id="customAlertTitle">notifikasi</h3>
+        <p id="customAlertMessage">Alert content message goes here.</p>
+        <button class="alert-close-btn" onclick="closeCustomAlert()">pahamkok</button>
+    </div>
+</div>
+
+<div id="authContainer">
+    <div class="auth-card">
+        <h2 id="authTitle">sign in</h2>
+        <input type="text" id="authUsername" placeholder="usn" style="display: none;">
+        <!-- Ubah type="email" menjadi type="text" agar browser tidak komplain saat user mengetik username biasa -->
+<input type="text" id="authEmail" placeholder="masukkan usn">
+<input type="password" id="authPassword" placeholder="masukkam password">
+        <button class="primary-btn" id="authPrimaryAction" onclick="handleAuth()">sign in</button>
+        <button class="secondary-btn" id="authToggleAction" onclick="toggleAuthMode()">gapunya akun? sign up lah kontol</button>
+    </div>
+</div>
+
+<div class="topbar">
+    <div>
+        <div class="asset" id="activeAssetLabel">CatMilk (CMLK)</div>
+        <div id="price" class="price green">$50.00</div>
+        
+        <div id="positionResult" class="position neutral">ga naik ga turun</div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">balance</div>
+                <div id="balanceValue">$100</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">kript</div>
+                <div id="holdingValue">0 CMLK</div>
+            </div>
+        </div>
+    </div>
+
+    <button id="menuBtn">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <div id="menuPanel">
+        <div class="nav-highlight" onclick="openOverlay('crypto')">kriptoajg</div>
+        <div class="nav-highlight" onclick="openOverlay('leaderboard')">leaderboard </div>
+        <div class="nav-highlight" onclick="openOverlay('account')">profil akun</div>
+        <div class="nav-danger" onclick="triggerLogout()">log out</div>
+    </div>
+</div>
+
+<div class="graph-container">
+    <canvas id="chart" width="1000" height="1000"></canvas>
+</div>
+
+<div class="actions">
+    <button class="buy" onclick="buyAsset()">BUY</button>
+    <div class="sell-group">
+        <button class="sell-all" onclick="sellAllAssets()">SELL ALL</button>
+        <button class="sell" onclick="sellAsset()">SELL</button>
+    </div>
+</div>
+
+<div id="cryptoOverlay" class="app-overlay">
+    <button class="close-overlay-btn" onclick="closeOverlays()">← balik ke grafik kripto</button>
+    <div class="overlay-card">
+        <div class="overlay-title">tredinfkripto</div>
+        <div class="crypto-list" id="cryptoRenderList"></div>
+    </div>
+</div>
+
+<div id="leaderboardOverlay" class="app-overlay">
+    <button class="close-overlay-btn" onclick="closeOverlays()">← balik ke kripto </button>
+    <div class="overlay-card">
+        <div class="overlay-title">leaderboard</div>
+        <div class="leaderboard-list" id="leaderboardRenderList"></div>
+    </div>
+</div>
+
+<div id="accountOverlay" class="app-overlay">
+    <button class="close-overlay-btn" onclick="closeOverlays()">← balik ke kripto</button>
+    <div class="overlay-card">
+        <div class="overlay-title">akun</div>
+        <div class="account-info-row">
+            <div class="label">usn / gmail</div>
+            <div class="account-value" id="accountUserIdentity">ga ada akunloginyhh</div>
+        </div>
+        
+        <div class="account-info-row">
+            <div class="label">gantinama200dm</div>
+            <div class="edit-username-container">
+                <input type="text" id="profileNewUsername" class="edit-username-input" placeholder="usn baru lo">
+                <button class="edit-username-btn" onclick="updateProfileUsername()">simpan</button>
+            </div>
+        </div>
+
+        <div class="account-info-row">
+            <div class="label">user UID</div>
+            <div class="account-value" id="accountUid">---</div>
+        </div>
+    </div>
+    <div class="overlay-card danger-zone">
+        <div class="overlay-title" style="color:#ff4d67;">kontolmerah</div>
+        <button class="logout-action-btn" onclick="triggerLogout()">logout dari sesi</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script src="skrippp.js"></script>
+</body>
+</html>
